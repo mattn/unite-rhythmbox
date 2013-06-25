@@ -5,12 +5,22 @@ use File::Spec::Functions;
 use URI::file;
 use Net::DBus qw/ dbus_string dbus_boolean/;
 use Getopt::Long;
+use JSON::XS;
 
 sub library_path {
-    my $config = Config::Simple->new(
-        catfile($ENV{HOME}, '.config', 'user-dirs.dirs'));
-    my $path = $config->param("XDG_MUSIC_DIR");
-    $path =~ s/\$([A-Z]+)/$ENV{$1}/e;
+    my $path;
+    if (my $gsettings = `which gsettings 2> /dev/null`) {
+        my $ret = `gsettings get org.gnome.rhythmbox.rhythmdb locations`;
+        $ret =~ s/^\['([^']+)'.*/\1/;
+        $path = URI->new($ret)->file;
+    } else {
+        my $config = Config::Simple->new(
+            catfile($ENV{HOME}, '.config', 'user-dirs.dirs'));
+        if ($config) {
+            $path = $config->param("XDG_MUSIC_DIR");
+            $path =~ s/\$([A-Z]+)/$ENV{$1}/e;
+        }
+    }
     $path;
 }
 
@@ -20,7 +30,11 @@ GetOptions('play=s' => \$uri, toggle => \$toggle);
 my $bus = Net::DBus->find;
 my $rhythmbox = $bus->get_service("org.gnome.Rhythmbox3");
 my $rhythmdb = $rhythmbox->get_object("/org/gnome/Rhythmbox3/RhythmDB", "org.gnome.Rhythmbox3.RhythmDB"); 
-my $mediaplayer = $bus->get_service("org.mpris.MediaPlayer2.rhythmbox");
+my $mediaplayer;
+while (!defined $mediaplayer) {
+  eval { $mediaplayer = $bus->get_service("org.mpris.MediaPlayer2.rhythmbox") };
+  sleep 1
+}
 my $player = $mediaplayer->get_object("/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player"); 
 
 if ($toggle) {
