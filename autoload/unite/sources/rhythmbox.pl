@@ -5,7 +5,6 @@ use File::Spec::Functions;
 use URI::file;
 use Net::DBus qw/ dbus_string dbus_boolean/;
 use Getopt::Long;
-use JSON::XS;
 
 sub library_path {
     my $path;
