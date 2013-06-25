@@ -18,20 +18,21 @@ my ($toggle, $uri);
 GetOptions('play=s' => \$uri, toggle => \$toggle);
 
 my $bus = Net::DBus->find;
-my $rhythmbox = $bus->get_service("org.gnome.Rhythmbox");
-my $shell = $rhythmbox->get_object("/org/gnome/Rhythmbox/Shell", "org.gnome.Rhythmbox.Shell"); 
-my $player = $rhythmbox->get_object("/org/gnome/Rhythmbox/Player", "org.gnome.Rhythmbox.Player"); 
+my $rhythmbox = $bus->get_service("org.gnome.Rhythmbox3");
+my $rhythmdb = $rhythmbox->get_object("/org/gnome/Rhythmbox3/RhythmDB", "org.gnome.Rhythmbox3.RhythmDB"); 
+my $mediaplayer = $bus->get_service("org.mpris.MediaPlayer2.rhythmbox");
+my $player = $mediaplayer->get_object("/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player"); 
 
 if ($toggle) {
-    $player->playPause(1);
+    $player->PlayPause();
 } elsif ($uri) {
-    $shell->loadURI($uri, 1);
+    $player->OpenUri($uri);
 } else {
     finddepth(sub {
         return if $_ eq '.' || $_ eq '..' || $_ !~ /\.mp3$|\.ogg$/;
         eval {
             my $uri = URI::file->new($File::Find::name)->as_string;
-            my $props = $shell->getSongProperties($uri);
+            my $props = $rhythmdb->GetEntryProperties($uri);
             printf "%s\t%s\t%s\t%s\n",
                  $props->{artist}, $props->{album}, $props->{title}, $uri;
         };
